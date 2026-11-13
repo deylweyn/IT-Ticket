@@ -1,0 +1,70 @@
+/* christmas.css - seasonal theme (red, green, blue + white). Scoped to body.christmas (set by theme.js).
+   Decorative layers are pointer-events:none and aria-hidden. */
+
+body.christmas{
+  --accent:#C62828;
+  --accent-dark:#8E1B1B;
+  --accent-ink:#FDECEC;
+  --sidebar-active:#FDECEC;
+  --bg:#F8FAF7;
+  --surface-raised:#FBFCFA;
+  background:
+    radial-gradient(circle at 10% 6%, rgba(198,40,40,.08), rgba(198,40,40,0) 55%),
+    radial-gradient(circle at 92% 94%, rgba(27,127,59,.10), rgba(27,127,59,0) 55%),
+    radial-gradient(circle at 88% 8%, rgba(30,100,200,.08), rgba(30,100,200,0) 50%),
+    var(--bg);
+  background-attachment:fixed;
+}
+body.christmas .topbar{
+  border-bottom:4px solid transparent;
+  border-image:repeating-linear-gradient(135deg,#C62828 0 8px,#fff 8px 16px,#1B7F3B 16px 24px,#fff 24px 32px,#1E64C8 32px 40px,#fff 40px 48px) 1;
+}
+body.christmas .sidebar-brand span::after,
+body.christmas .auth-wordmark span::after{content:" \1F384";}
+
+/* sign-in screen: winter night with snowy hills */
+body.christmas .auth-screen{
+  background:radial-gradient(circle at 78% 18%, #1B4B7A 0%, #0B2545 45%, #050F1F 100%);
+}
+body.christmas .auth-card{box-shadow:0 0 44px rgba(229,57,53,.22);}
+.xm-sky{position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+.xm-hill{
+  position:absolute; left:-15%; right:-15%; height:150px; background:#EEF4FA;
+  border-radius:50% 50% 0 0 / 100% 100% 0 0;
+}
+.xm-hill.a{bottom:-90px;}
+.xm-hill.b{bottom:-110px; left:20%; right:-30%; background:#DCE8F3;}
+
+/* ---------- falling snow + string lights (above chrome, below modals) ---------- */
+.xm-layer{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:6;}
+
+.xm-flake{
+  position:absolute; left:var(--x); top:0; width:var(--s); height:var(--s); border-radius:50%;
+  background:#fff; opacity:var(--o);
+  box-shadow:0 0 3px 1px rgba(90,130,180,.55);
+  animation:xm-fall var(--dur) linear var(--delay) infinite; will-change:transform;
+}
+@keyframes xm-fall{
+  0%  {transform:translate(0,-6vh);}
+  33% {transform:translate(16px,30vh);}
+  66% {transform:translate(-14px,66vh);}
+  100%{transform:translate(8px,108vh);}
+}
+
+/* string lights: a thin wire with red, white, green and blue bulbs, blinking out of phase */
+.xm-lights{position:absolute; top:0; left:0; right:0; height:14px; border-top:2px solid #2D4A37;}
+.xm-lights i{
+  position:absolute; inset:0;
+  background:radial-gradient(circle at 5px 7px, var(--c) 0 4px, transparent 5px) var(--off) 0 / 152px 14px repeat-x;
+  filter:drop-shadow(0 0 4px var(--c));
+  animation:xm-twinkle 2.4s ease-in-out var(--ph) infinite;
+}
+@keyframes xm-twinkle{0%,100%{opacity:1;} 50%{opacity:.25;}}
+
+@media (max-width:760px){
+  .xm-flake:nth-child(n+19){display:none;}
+}
+@media (prefers-reduced-motion: reduce){
+  .xm-flake{display:none;}
+  .xm-lights i{animation:none;}
+}

@@ -1,0 +1,53 @@
+/* valentines.css - Valentine's Day theme. Scoped to body.valentines
+   (set by theme.js). Pink, red and white; hearts floating up the screen. */
+
+body.valentines{
+  --accent:#C41E4A;
+  --accent-dark:#971236;
+  --accent-ink:#FFF0F3;
+  --sidebar-active:#FFEFF4;
+  --bg:#FDF7F9;
+  --surface-raised:#FEFAFB;
+  background:
+    radial-gradient(circle at 10% 6%, rgba(194,37,92,.09), rgba(194,37,92,0) 55%),
+    radial-gradient(circle at 92% 94%, rgba(255,150,180,.14), rgba(255,150,180,0) 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+body.valentines .topbar{
+  border-bottom:3px solid transparent;
+  border-image:linear-gradient(90deg,#C41E4A,#FF8FAB 35%,#FFD6E0 50%,#FF8FAB 65%,#C41E4A) 1;
+}
+body.valentines .sidebar-brand span::after,
+body.valentines .auth-wordmark span::after{content:" \1F496";}
+
+body.valentines .auth-screen{
+  background:radial-gradient(circle at 78% 18%, #8B1236 0%, #4A0A1E 50%, #1F0510 100%);
+}
+body.valentines .auth-card{box-shadow:0 0 44px rgba(255,120,160,.30);}
+.vd-sky{position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+.vd-sky .hw-star{background:#FFC2D4;}
+
+.vd-layer{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:6;}
+
+.vd-heart{
+  position:absolute; left:var(--x); bottom:-44px; font-size:var(--s); line-height:1;
+  color:var(--c); opacity:0; font-family:Arial, sans-serif;
+  text-shadow:0 0 2px rgba(196,30,74,.85), 0 0 7px rgba(255,255,255,.7);
+  animation:vd-rise var(--dur) ease-in-out var(--delay) infinite; will-change:transform,opacity;
+}
+@keyframes vd-rise{
+  0%  {transform:translate(0,0) rotate(-8deg);          opacity:0;}
+  10% {                                                 opacity:var(--o);}
+  30% {transform:translate(18px,-30vh) rotate(8deg);}
+  60% {transform:translate(-16px,-66vh) rotate(-8deg);}
+  90% {                                                 opacity:var(--o);}
+  100%{transform:translate(10px,-114vh) rotate(6deg);   opacity:0;}
+}
+
+@media (max-width:760px){
+  .vd-heart:nth-child(n+11){display:none;}
+}
+@media (prefers-reduced-motion: reduce){
+  .vd-layer{display:none;}
+}

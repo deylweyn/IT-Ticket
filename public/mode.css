@@ -1,0 +1,131 @@
+/* mode.css - light/dark mode (per user, chosen with the icon button next to
+   the bell). Dark mode = html[data-mode="dark"], set by mode.js.
+   Most of the app is built on CSS variables, so dark mode mostly just
+   re-defines those; the handful of hard-coded light colours are fixed below.
+   This file must load AFTER styles.css and the seasonal theme CSS files. */
+
+/* ---------------- the toggle button (icon only, no box) ---------------- */
+.mode-toggle-btn{
+  position:relative; width:36px; height:36px; border-radius:50%;
+  border:none; background:transparent; color:var(--ink-600);
+  display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.mode-toggle-btn:hover{background:var(--ink-100); color:var(--ink-950);}
+.mode-toggle-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.mode-toggle-btn svg{display:block;}
+.mode-icon-sun{display:none;}
+html[data-mode="dark"] .mode-icon-sun{display:block;}
+html[data-mode="dark"] .mode-icon-moon{display:none;}
+
+/* same icon in the corner of the sign-in screen (always a dark backdrop) */
+.mode-toggle-btn.auth-corner{
+  position:fixed; top:14px; right:16px; z-index:10; color:rgba(255,255,255,.85);
+}
+.mode-toggle-btn.auth-corner:hover{background:rgba(255,255,255,.14); color:#fff;}
+
+/* circular reveal when switching (View Transitions API; mode.js drives it) */
+::view-transition-old(root), ::view-transition-new(root){animation:none; mix-blend-mode:normal;}
+::view-transition-old(root){z-index:1;}
+::view-transition-new(root){z-index:2;}
+
+/* ---------------- dark palette ---------------- */
+html[data-mode="dark"]{
+  color-scheme:dark;
+  --ink-950:#F3F4F6;
+  --ink-900:#E6E8EB;
+  --ink-800:#CDD0D5;
+  --ink-600:#A3A8B0;
+  --ink-400:#7C818A;
+  --ink-200:#3A3D44;
+  --ink-100:#2A2D33;
+  --bg:#121316;
+  --surface:#1B1D21;
+  --surface-raised:#22252A;
+  --accent:#4F77F2;
+  --accent-dark:#3558D6;     /* button hover / backgrounds */
+  --accent-text:#9DB4FF;     /* accent used as text on dark tints */
+  --accent-ink:#1E2740;      /* tinted pill / bell background */
+  --teal:#2DB8A3;
+  --line:rgba(255,255,255,.10);
+  --low:#3FB874; --medium:#E0A93B; --high:#E27A45; --critical:#EF6A60;
+  --open:#6C8DFF; --inprogress:#E0A93B; --resolved:#3FB874;
+  --sidebar-bg:#17181B; --sidebar-ink:#E6E8EB; --sidebar-ink-dim:#9AA0A8;
+  --sidebar-active:rgba(79,119,242,.18);
+  --clay-out:0 1px 2px rgba(0,0,0,.45);
+  --clay-out-lg:0 8px 24px rgba(0,0,0,.5);
+  --shadow-md:0 1px 2px rgba(0,0,0,.45);
+}
+html[data-mode="dark"] body{
+  background:radial-gradient(circle at 22% 24%, rgba(79,119,242,.12), rgba(79,119,242,0) 60%), var(--bg);
+  background-attachment:fixed;
+}
+
+/* accent used as TEXT on tinted backgrounds needs the lighter shade */
+html[data-mode="dark"] .live-clock,
+html[data-mode="dark"] .filter-banner,
+html[data-mode="dark"] .filter-banner a{color:var(--accent-text);}
+
+/* ---------------- hard-coded light colours in styles.css ---------------- */
+html[data-mode="dark"] .btn-danger:hover,
+html[data-mode="dark"] #logout-btn:hover{background:rgba(239,106,96,.14);}
+html[data-mode="dark"] .form-error{background:rgba(239,106,96,.12); color:#FF9A92; border-color:rgba(239,106,96,.35);}
+html[data-mode="dark"] .notif-row.unseen:hover{background:rgba(79,119,242,.22);}
+html[data-mode="dark"] .notice-panel{background:rgba(239,106,96,.10);}
+html[data-mode="dark"] .notice-item:hover,
+html[data-mode="dark"] .notice-item-hot{background:rgba(239,106,96,.16);}
+html[data-mode="dark"] .notice-item-hot:hover{background:rgba(239,106,96,.24);}
+html[data-mode="dark"] .toast.error{background:#3A1D1C; border-color:rgba(239,106,96,.5); color:#FFB4AE;}
+html[data-mode="dark"] .toast.success{background:#16301F; border-color:rgba(63,184,116,.5); color:#8FE0AE;}
+html[data-mode="dark"] .ticket-card.esc-overdue{background:rgba(239,106,96,.16); animation-name:esc-blink-card-dark;}
+@keyframes esc-blink-card-dark{0%,100%{background:rgba(239,106,96,.16); box-shadow:0 0 0 2px var(--critical);} 50%{background:rgba(239,106,96,.45); box-shadow:0 0 0 3px var(--critical), 0 0 16px rgba(239,106,96,.6);}}
+@media (prefers-reduced-motion: reduce){ html[data-mode="dark"] .ticket-card.esc-overdue{animation:none;} }
+html[data-mode="dark"] .modal-header.esc-overdue{background:#8F2A24;}
+/* two inline-styled alert boxes in app.js */
+html[data-mode="dark"] [style*="FFFBFB" i]{background:#2A1B1C !important; border-color:#7A3535 !important;}
+html[data-mode="dark"] [style*="FFFBF0" i]{background:#2A2418 !important; border-color:#7A6330 !important;}
+
+/* ---------------- dark mode + seasonal themes ----------------
+   The seasonal themes set their own light --bg / accent on <body>, which
+   would win over the dark palette on <html>, so each gets a dark variant. */
+html[data-mode="dark"] body.halloween{
+  --bg:#121316; --surface-raised:#22252A;
+  --accent:#F2701F; --accent-dark:#C4540F; --accent-text:#FFB27A;
+  --accent-ink:#3A2416; --sidebar-active:rgba(242,112,31,.18);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(242,112,31,.14), rgba(242,112,31,0) 55%),
+    radial-gradient(circle at 92% 92%, rgba(0,0,0,.35), rgba(0,0,0,0) 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+html[data-mode="dark"] body.christmas{
+  --bg:#101415; --surface-raised:#22252A;
+  --accent:#E5484D; --accent-dark:#B9282D; --accent-text:#FF9EA1;
+  --accent-ink:#3A1D20; --sidebar-active:rgba(229,72,77,.18);
+  background:
+    radial-gradient(circle at 10% 6%, rgba(229,72,77,.12), rgba(229,72,77,0) 55%),
+    radial-gradient(circle at 92% 94%, rgba(46,160,90,.14), rgba(46,160,90,0) 55%),
+    radial-gradient(circle at 88% 8%, rgba(60,130,230,.12), rgba(60,130,230,0) 50%),
+    var(--bg);
+  background-attachment:fixed;
+}
+html[data-mode="dark"] body.newyear{
+  --bg:#101219; --surface-raised:#22252A;
+  --accent:#A57A12; --accent-dark:#7C5A0B; --accent-text:#F6D365;
+  --accent-ink:#33290F; --sidebar-active:rgba(246,201,69,.14);
+  background:
+    radial-gradient(circle at 10% 6%, rgba(246,201,69,.12), rgba(246,201,69,0) 55%),
+    radial-gradient(circle at 92% 94%, rgba(76,110,245,.14), rgba(76,110,245,0) 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+html[data-mode="dark"] body.valentines{
+  --bg:#141013; --surface-raised:#22252A;
+  --accent:#E0345F; --accent-dark:#B01F46; --accent-text:#FF9DB6;
+  --accent-ink:#3A1B27; --sidebar-active:rgba(224,52,95,.18);
+  background:
+    radial-gradient(circle at 10% 6%, rgba(224,52,95,.14), rgba(224,52,95,0) 55%),
+    radial-gradient(circle at 92% 94%, rgba(255,143,171,.10), rgba(255,143,171,0) 55%),
+    var(--bg);
+  background-attachment:fixed;
+}

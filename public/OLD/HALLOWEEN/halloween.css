@@ -1,0 +1,116 @@
+/* halloween.css - seasonal theme for Tambunting Ticket Desk.
+   Everything is scoped to body.halloween (toggled by halloween.js), so
+   removing the class restores the normal look exactly. Decorative layers
+   are pointer-events:none and aria-hidden: they never block clicks. */
+
+/* ---------- palette: swap the blue accent for pumpkin orange ---------- */
+body.halloween{
+  --accent:#D9480F;
+  --accent-dark:#A83A0A;
+  --accent-ink:#FFF1E6;
+  --sidebar-active:#FFF1E6;
+  --bg:#FBF7F2;
+  --surface-raised:#FCF9F5;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(217,72,15,.10), rgba(217,72,15,0) 55%),
+    radial-gradient(circle at 92% 92%, rgba(91,45,160,.10), rgba(91,45,160,0) 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+body.halloween .topbar{
+  border-bottom:3px solid transparent;
+  border-image:linear-gradient(90deg,#D9480F,#6B3FA0 50%,#D9480F) 1;
+}
+body.halloween .sidebar-brand span::after,
+body.halloween .auth-wordmark span::after{content:" \1F383";}
+
+/* ---------- sign-in screen turns into a night sky ---------- */
+body.halloween .auth-screen{
+  background:radial-gradient(circle at 78% 18%, #3a2170 0%, #1a1033 45%, #0b0716 100%);
+}
+body.halloween .auth-card{box-shadow:0 0 44px rgba(217,72,15,.28);}
+.hw-sky{position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+.hw-moon{
+  position:absolute; top:9%; right:11%; width:clamp(70px,11vw,130px); aspect-ratio:1; border-radius:50%;
+  background:
+    radial-gradient(circle at 32% 36%, rgba(180,150,90,.35) 0 9%, transparent 10%),
+    radial-gradient(circle at 64% 58%, rgba(180,150,90,.30) 0 12%, transparent 13%),
+    radial-gradient(circle at 46% 78%, rgba(180,150,90,.25) 0 6%, transparent 7%),
+    radial-gradient(circle at 38% 32%, #FFF1C9, #F6D58A 70%);
+  box-shadow:0 0 40px 12px rgba(255,214,130,.32), 0 0 120px 40px rgba(255,190,90,.14);
+  animation:hw-moon-glow 6s ease-in-out infinite;
+}
+.hw-star{
+  position:absolute; width:var(--s); height:var(--s); border-radius:50%; background:#fff;
+  left:var(--x); top:var(--y); opacity:.7; animation:hw-twinkle var(--d) ease-in-out var(--delay) infinite;
+}
+@keyframes hw-moon-glow{0%,100%{filter:brightness(1);}50%{filter:brightness(1.1);}}
+@keyframes hw-twinkle{0%,100%{opacity:.15;}50%{opacity:.9;}}
+
+/* ---------- flying layer (sits above page chrome, below modals/toasts) ---------- */
+.hw-layer{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:6;}
+
+/* bats: three nested animations - travel across, bob up/down, flap */
+.hw-bat{
+  position:absolute; left:0; top:var(--top); width:var(--size);
+  animation:hw-fly-r var(--dur) linear var(--delay) infinite;
+  will-change:transform;
+}
+.hw-bat.rtl{animation-name:hw-fly-l;}
+.hw-bob{animation:hw-bob var(--bob) ease-in-out infinite;}
+.hw-bat svg{
+  display:block; width:100%; height:auto; overflow:visible;
+  fill:#1B1230; stroke:rgba(255,255,255,.4); stroke-width:.9; stroke-linejoin:round;
+  transform-origin:50% 40%; animation:hw-flap var(--flap) ease-in-out infinite;
+}
+@keyframes hw-fly-r{from{transform:translateX(-14vw);} to{transform:translateX(114vw);}}
+@keyframes hw-fly-l{from{transform:translateX(114vw);} to{transform:translateX(-14vw);}}
+@keyframes hw-bob{0%,100%{transform:translateY(-16px);} 50%{transform:translateY(16px);}}
+@keyframes hw-flap{0%,100%{transform:scaleY(1);} 50%{transform:scaleY(.4);}}
+
+/* ghosts: faint, drift upward with a lazy sway */
+.hw-ghost{
+  position:absolute; left:var(--left); bottom:-90px; width:var(--size);
+  animation:hw-rise var(--dur) ease-in-out var(--delay) infinite; will-change:transform,opacity;
+}
+.hw-ghost svg{display:block; width:100%; height:auto; filter:drop-shadow(0 0 8px rgba(155,138,196,.55));}
+@keyframes hw-rise{
+  0%  {transform:translate(0,0);            opacity:0;}
+  10% {                                      opacity:.42;}
+  25% {transform:translate(34px,-28vh);}
+  50% {transform:translate(-22px,-58vh);}
+  75% {transform:translate(30px,-88vh);}
+  90% {                                      opacity:.42;}
+  100%{transform:translate(0,-128vh);       opacity:0;}
+}
+
+/* spider: drops from the top edge, hangs, then climbs back up */
+.hw-spider{
+  position:absolute; top:-150px; left:var(--left, 52%); width:34px;
+  display:flex; flex-direction:column; align-items:center;
+  transform-origin:50% 0; animation:hw-spider-drop 14s ease-in-out infinite;
+}
+.hw-thread{width:1px; height:150px; background:rgba(60,50,85,.55);}
+.hw-spider svg{display:block; width:34px; height:auto; fill:#1B1230; stroke:#1B1230;}
+@keyframes hw-spider-drop{
+  0%,10%  {transform:translateY(0);}
+  34%     {transform:translateY(128px);}
+  40%     {transform:translateY(122px);}
+  46%     {transform:translateY(128px);}
+  72%     {transform:translateY(128px);}
+  92%,100%{transform:translateY(0);}
+}
+
+/* ---------- toggle button in the sidebar ---------- */
+.hw-toggle{font-size:12.5px;}
+
+/* ---------- small screens: calmer ---------- */
+@media (max-width:760px){
+  .hw-spider, .hw-ghost:nth-child(n+3), .hw-bat:nth-child(n+5){display:none;}
+}
+
+/* ---------- reduced motion: keep colours + moon, drop the movement ---------- */
+@media (prefers-reduced-motion: reduce){
+  .hw-layer, .hw-star{display:none;}
+  .hw-moon{animation:none;}
+}

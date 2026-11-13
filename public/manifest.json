@@ -1,0 +1,25 @@
+{
+  "name": "Tambunting Pawnshop Ticket System",
+  "short_name": "Ticket Desk",
+  "description": "Tambunting Pawnshop IT Ticket Desk",
+  "author": "IT Department",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#20418F",
+  "theme_color": "#20418F",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

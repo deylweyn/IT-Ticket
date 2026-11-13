@@ -1,0 +1,63 @@
+/* newyear.css - New Year theme. Scoped to body.newyear (set by theme.js).
+   Midnight navy, gold and silver; falling confetti and occasional fireworks. */
+
+body.newyear{
+  --accent:#8A6410;
+  --accent-dark:#5E450B;
+  --accent-ink:#FFF7E0;
+  --sidebar-active:#FFF6DC;
+  --bg:#FBF9F2;
+  --surface-raised:#FCFBF6;
+  background:
+    radial-gradient(circle at 10% 6%, rgba(212,160,23,.12), rgba(212,160,23,0) 55%),
+    radial-gradient(circle at 92% 94%, rgba(30,42,82,.10), rgba(30,42,82,0) 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+body.newyear .topbar{
+  border-bottom:3px solid transparent;
+  border-image:linear-gradient(90deg,#1E2A52,#B8860B 25%,#F6D365 45%,#C9D1DC 65%,#1E2A52) 1;
+}
+body.newyear .sidebar-brand span::after,
+body.newyear .auth-wordmark span::after{content:" \1F386";}
+
+body.newyear .auth-screen{
+  background:radial-gradient(circle at 78% 18%, #1E2A52 0%, #0E1430 50%, #05081A 100%);
+}
+body.newyear .auth-card{box-shadow:0 0 44px rgba(246,211,101,.25);}
+.ny-sky{position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+.ny-sky .hw-star{background:#FFE08A;}
+
+.ny-layer{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:6;}
+
+/* confetti */
+.ny-confetti{
+  position:absolute; top:0; left:var(--x); width:var(--w); height:var(--h);
+  background:var(--c); opacity:.9; border-radius:1px;
+  animation:ny-fall var(--dur) linear var(--delay) infinite; will-change:transform;
+}
+@keyframes ny-fall{
+  0%  {transform:translate(0,-6vh) rotate(0deg);}
+  50% {transform:translate(22px,55vh) rotate(var(--r));}
+  100%{transform:translate(-12px,108vh) rotate(calc(var(--r) * 2));}
+}
+
+/* fireworks: theme.js drops a burst of sparks every few seconds */
+.ny-burst{position:absolute; width:0; height:0;}
+.ny-spark{
+  position:absolute; left:-2px; top:-2px; width:4px; height:4px; border-radius:50%;
+  background:var(--c); box-shadow:0 0 6px 1px var(--c);
+  animation:ny-spark 1.5s cubic-bezier(.1,.7,.3,1) forwards;
+}
+@keyframes ny-spark{
+  0%  {transform:translate(0,0) scale(1.2); opacity:1;}
+  70% {opacity:1;}
+  100%{transform:translate(var(--dx),calc(var(--dy) + 28px)) scale(.3); opacity:0;}
+}
+
+@media (max-width:760px){
+  .ny-confetti:nth-child(n+15){display:none;}
+}
+@media (prefers-reduced-motion: reduce){
+  .ny-layer{display:none;}
+}
