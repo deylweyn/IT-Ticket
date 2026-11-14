@@ -584,6 +584,16 @@ route("GET", "/api/tickets", async (req, res, params, query) => {
   sendJson(res, 200, { tickets: ticketsOut, total, page, page_size: pageSize });
 });
 
+// Live-refresh heartbeat polled by app.js's syncTickets() every 5s. MUST be
+// registered before "/api/tickets/:id" below - routes match first-come, so
+// otherwise "sync" is treated as a ticket id and this never answers.
+route("GET", "/api/tickets/sync", async (req, res) => {
+  const user = await requireRole(req, "Super Admin", "IT Department");
+  const itScope = await data.getItBranchScope(user.role, user.id);
+  const fp = await data.getTicketSyncFingerprint(itScope);
+  sendJson(res, 200, { fp });
+});
+
 route("GET", "/api/tickets/:id", async (req, res, params) => {
   const user = await requireLogin(req);
   const ticketId = Number(params.id);
@@ -727,6 +737,7 @@ route("POST", "/api/tickets/:id/status", async (req, res, params, query, body) =
     }
   }
   await data.updateTicketStatus(ticketId, status);
+  await data.markFirstResponse(ticketId, user.id);
 
   // Let the branch that filed this ticket know its status changed - this is
   // the ONLY thing the branch gets pushed here, regardless of how many IT
@@ -2827,6 +2838,20 @@ route("GET", "/api/reports/performance", async (req, res, params, query) => {
   // the chart can show both series instead of just tickets created.
   const dailyResolved = await reporting.getDailyResolvedBreakdown(start, end, { branch, scope: itScope });
   sendJson(res, 200, { start, end, report, summary, daily, daily_resolved: dailyResolved });
+});
+
+route("GET", "/api/reports/response-records", async (req, res, params, query) => {
+  // Super Admin only: how long each ticket sat before IT first acted on it
+  // (see reporting.getResponseRecords / data.markFirstResponse).
+  await requireRole(req, "Super Admin");
+  // No mode = "All history" (resolveRangeFromQuery would default to this month).
+  const [start, end] = query.get("mode") ? resolveRangeFromQuery(query) : ["1970-01-01", "2999-12-31"];
+  const staffId = query.get("staff") ? Number(query.get("staff")) : null;
+  const result = await reporting.getResponseRecords(start, end, {
+    branch: query.get("branch") || null,
+    staffId: Number.isInteger(staffId) ? staffId : null,
+  });
+  sendJson(res, 200, { start, end, ...result });
 });
 
 route("GET", "/api/reports/staff/:id", async (req, res, params, query) => {

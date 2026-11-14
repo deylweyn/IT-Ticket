@@ -345,6 +345,19 @@ async function _runFullInit() {
   await p.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP`);
   await p.query(`UPDATE tickets SET assigned_at = created_at WHERE assigned_at IS NULL`);
   await p.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS is_province BOOLEAN NOT NULL DEFAULT FALSE`);
+
+  // Response Records (Super Admin): when an IT staff member FIRST acted on a
+  // ticket - first status change, comment, or assist - and who. Stamped once
+  // by data.markFirstResponse and never overwritten (reopening a ticket
+  // doesn't reset it), so (first_response_at - created_at) is the true time
+  // it took IT to pick the ticket up. See reporting.getResponseRecords.
+  await p.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS first_response_at TIMESTAMP`);
+  await p.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS first_response_by INT REFERENCES users(id)`);
+  // One-off backfill for tickets that existed before these columns: use the
+  // earliest IT comment or assist as the best available "first response".
+  // (Older status changes weren't logged, so they can't be recovered.)
+  // Idempotent - only touches rows still NULL. Runs after the comments and
+  // ticket_assists tables are created (see the end of this function).
   await p.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS poked_at TIMESTAMP`);
   await p.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS poked_by INT REFERENCES users(id)`);
   await p.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS escalated_at TIMESTAMP`);
@@ -567,6 +580,23 @@ async function _runFullInit() {
   await p.query(
     "CREATE INDEX IF NOT EXISTS idx_ticket_collaborators_user ON ticket_collaborators (user_id)"
   );
+
+  // Backfill tickets.first_response_at/by (columns added above) for tickets
+  // from before they existed - see the comment there.
+  await p.query(`
+    UPDATE tickets t
+       SET first_response_at = x.at, first_response_by = x.uid
+      FROM (
+        SELECT DISTINCT ON (ticket_id) ticket_id, at, uid FROM (
+          SELECT c.ticket_id, c.created_at AS at, c.user_id AS uid
+            FROM comments c JOIN users u ON u.id = c.user_id
+           WHERE u.role = 'IT Department'
+          UNION ALL
+          SELECT ticket_id, assisted_at AS at, assisted_by AS uid FROM ticket_assists
+        ) s ORDER BY ticket_id, at
+      ) x
+     WHERE t.id = x.ticket_id AND t.first_response_at IS NULL
+  `);
 
   // Branches. The list of branch names is no longer hardcoded in the app - a
   // Super Admin manages it here (Manage Branches panel), and every "Branch"

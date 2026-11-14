@@ -663,6 +663,7 @@ const REPORTS_GROUP_SUPER_ADMIN = {
   label: "Reports",
   children: [
     ["reporting", "Reporting"],
+    ["responserecords", "Response Records"],
     ["staffreport", "Staff Reports"],
     ["corpreport", "Corporation Reports"],
   ],
@@ -1275,7 +1276,7 @@ function goTab(tab, opts = {}) {
   });
   const titles = {
     dashboard: "Dashboard", tickets: "Tickets", newticket: "Submit a Ticket",
-    reporting: "Reporting", staffreport: "Staff Reports", corpreport: "Corporation Reports", myreport: "My Report", accounts: "Accounts", branches: "Branches", departments: "Departments", categories: "Categories", itstaff: "IT Staff & Availability",
+    reporting: "Reporting", responserecords: "Response Records", staffreport: "Staff Reports", corpreport: "Corporation Reports", myreport: "My Report", accounts: "Accounts", branches: "Branches", departments: "Departments", categories: "Categories", itstaff: "IT Staff & Availability",
     workspace: "Team Workspace — Overview",
     "workspace-files": "Team Workspace — Shared Files",
     "workspace-memos": "Team Workspace — Memos",
@@ -1289,7 +1290,7 @@ function goTab(tab, opts = {}) {
   root.innerHTML = `<div class="empty-state">Loading…</div>`;
   const renderers = {
     dashboard: renderDashboard, tickets: renderTickets, newticket: renderNewTicket,
-    reporting: renderReporting, staffreport: renderStaffReport, corpreport: renderCorporationReport, myreport: renderStaffReport, accounts: renderAccounts, branches: renderBranches, departments: renderDepartments, categories: renderCategories, itstaff: renderItStaff,
+    reporting: renderReporting, responserecords: renderResponseRecords, staffreport: renderStaffReport, corpreport: renderCorporationReport, myreport: renderStaffReport, accounts: renderAccounts, branches: renderBranches, departments: renderDepartments, categories: renderCategories, itstaff: renderItStaff,
     workspace: renderTeamWorkspace,
     "workspace-files": renderWorkspaceFilesPage,
     "workspace-memos": renderWorkspaceMemosPage,
@@ -4937,6 +4938,122 @@ function rankBadge(rank) {
   if (rank == null) return `<span class="muted">—</span>`;
   const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
   return medal ? `${medal} <span class="muted">${rank}</span>` : `${rank}`;
+}
+
+// ---------------------------------------------------------------------
+// Response Records (Super Admin): for every ticket, how long it took IT
+// staff to first act on it, counted from the moment the ticket was created.
+// "Acted on it" = the first status change, comment or assist by IT (stamped
+// server-side in tickets.first_response_at/by). Tickets nobody has touched
+// yet show a live "waiting" time instead. Data: /api/reports/response-records.
+// ---------------------------------------------------------------------
+function fmtMinutes(m) {
+  if (m === null || m === undefined || isNaN(m)) return "—";
+  m = Math.round(m);
+  if (m < 1) return "< 1 min";
+  const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mi = m % 60;
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (mi && d === 0) parts.push(`${mi}m`);
+  return parts.join(" ");
+}
+
+async function renderResponseRecords(root) {
+  if (!state.itStaff) {
+    const r = await api("/it-staff");
+    state.itStaff = r.staff;
+  }
+  root.innerHTML = `
+    <div class="panel"><div class="panel-body">
+      ${dateFilterToolbarHtml("rr")}
+      <div class="toolbar" style="margin-top:8px;">
+        <select id="rr-branch"><option value="">All branches</option>${state.branches.map(b => `<option>${escapeHtml(b)}</option>`).join("")}</select>
+        <select id="rr-staff"><option value="">All IT staff</option>${(state.itStaff || []).map(s => `<option value="${s.id}">${escapeHtml(s.full_name)}</option>`).join("")}</select>
+      </div>
+      <p class="muted" style="margin:10px 0 0;">Time from when a ticket was created until IT first acted on it (status change, comment or assist). Click a row to open the ticket.</p>
+      <div id="rr-results"><div class="empty-state">Loading…</div></div>
+    </div></div>`;
+
+  const buildDateParams = wireDateFilterToolbar("rr");
+  document.getElementById("rr-mode").value = "monthly";
+  document.getElementById("rr-mode").dispatchEvent(new Event("change"));
+
+  const runBtn = document.getElementById("rr-run");
+  const run = async () => {
+    const params = buildDateParams();
+    const branch = document.getElementById("rr-branch").value;
+    const staff = document.getElementById("rr-staff").value;
+    if (branch) params.set("branch", branch);
+    if (staff) params.set("staff", staff);
+    const resEl = document.getElementById("rr-results");
+    resEl.innerHTML = `<div class="empty-state">Loading…</div>`;
+    const data = await api(`/reports/response-records?${params.toString()}`, {}, runBtn);
+    const s = data.summary;
+    if (!data.records.length) {
+      resEl.innerHTML = `<div class="empty-state">No tickets in this period.</div>`;
+      return;
+    }
+    resEl.innerHTML = `
+      <div class="stat-grid" style="margin:18px 0;">
+        <div class="stat-card"><div class="label">Tickets</div><div class="value">${s.total}</div></div>
+        <div class="stat-card"><div class="label">Avg. first response</div><div class="value" style="font-size:28px;">${fmtMinutes(s.avg_response_minutes)}</div></div>
+        <div class="stat-card"><div class="label">Median</div><div class="value" style="font-size:28px;">${fmtMinutes(s.median_response_minutes)}</div></div>
+        <div class="stat-card"><div class="label">Slowest</div><div class="value" style="font-size:28px;">${fmtMinutes(s.slowest_response_minutes)}</div></div>
+        <div class="stat-card open"><div class="label">Not yet touched</div><div class="value">${s.waiting}</div></div>
+      </div>
+      ${data.staff.length ? `
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-header"><h3>By IT staff (first responder)</h3></div>
+        <div class="table-wrap"><table>
+          <tr><th>Staff</th><th>Tickets picked up</th><th>Avg. response</th><th>Fastest</th><th>Slowest</th></tr>
+          ${data.staff.map(x => `<tr><td>${escapeHtml(x.full_name)}</td><td>${x.count}</td><td>${fmtMinutes(x.avg_minutes)}</td><td>${fmtMinutes(x.fastest_minutes)}</td><td>${fmtMinutes(x.slowest_minutes)}</td></tr>`).join("")}
+        </table></div>
+      </div>` : ""}
+      <div id="rr-table"></div>
+      <div id="rr-pager" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:12px;"></div>`;
+
+    const PAGE_SIZE = 10;
+    let page = 1;
+    const pages = Math.max(1, Math.ceil(data.records.length / PAGE_SIZE));
+    const rowHtml = (t) => {
+      let respCell;
+      if (t.response_minutes !== null) respCell = `<strong>${fmtMinutes(t.response_minutes)}</strong>`;
+      else if (t.status === "Resolved") respCell = `<span class="muted" title="Resolved before responses were being logged">Not logged</span>`;
+      else respCell = `<span style="color:var(--critical);font-weight:600;">Waiting ${fmtMinutes(t.waiting_minutes)}</span>`;
+      return `<tr class="rr-row" data-id="${t.id}" style="cursor:pointer;">
+          <td>#${t.id} ${escapeHtml(t.title)}${t.is_province ? ` <span class="muted">(site visit)</span>` : ""}</td>
+          <td>${escapeHtml(t.branch)}</td>
+          <td>${priorityBadge(t.priority)}</td>
+          <td>${fmtDateTime(t.created_at)}</td>
+          <td>${t.first_response_at ? fmtDateTime(t.first_response_at) : "—"}</td>
+          <td>${t.responder_name ? escapeHtml(t.responder_name) : "—"}</td>
+          <td>${respCell}</td>
+          <td>${t.assignee_name ? escapeHtml(t.assignee_name) : "—"}</td>
+          <td>${statusBadge(t.status)}</td>
+          <td>${fmtMinutes(t.resolution_minutes)}</td>
+        </tr>`;
+    };
+    const drawPage = () => {
+      const slice = data.records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+      document.getElementById("rr-table").innerHTML = `<div class="table-wrap"><table>
+        <tr><th>Ticket</th><th>Branch</th><th>Priority</th><th>Created</th><th>First response</th><th>Responded by</th><th>Time to respond</th><th>Assigned to</th><th>Status</th><th>Time to resolve</th></tr>
+        ${slice.map(rowHtml).join("")}
+      </table></div>`;
+      document.querySelectorAll("#rr-table .rr-row").forEach(tr => { tr.onclick = () => openTicketDetail(Number(tr.dataset.id)); });
+      const from = (page - 1) * PAGE_SIZE + 1, to = Math.min(page * PAGE_SIZE, data.records.length);
+      const pager = document.getElementById("rr-pager");
+      pager.innerHTML = `<span class="muted">Showing ${from}–${to} of ${data.records.length}</span>
+        <button class="btn btn-secondary btn-sm" id="rr-prev" ${page <= 1 ? "disabled" : ""}>‹ Previous</button>
+        <span class="muted">Page ${page} of ${pages}</span>
+        <button class="btn btn-secondary btn-sm" id="rr-next" ${page >= pages ? "disabled" : ""}>Next ›</button>`;
+      document.getElementById("rr-prev").onclick = () => { page--; drawPage(); };
+      document.getElementById("rr-next").onclick = () => { page++; drawPage(); };
+    };
+    drawPage();
+  };
+  runBtn.onclick = run;
+  await run();
 }
 
 async function renderReporting(root) {

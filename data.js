@@ -2909,6 +2909,30 @@ async function getTicketsNeedingEscalationPush() {
   return rows;
 }
 
+/** Tiny change-detector for the live ticket refresh (app.js syncTickets).
+ * Returns a string that changes whenever any ticket's status, assignee,
+ * void/reopen state, province flag or updated_at changes, or a ticket is
+ * added/removed - so an admin's open Tickets list/dashboard can reload
+ * itself when IT staff move a ticket to In Progress/Resolved, instead of
+ * needing a manual refresh. `scope` is the BSP-mode branch scope from
+ * getItBranchScope (null = every ticket). */
+async function getTicketSyncFingerprint(scope) {
+  const pool = getConnection();
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS n,
+            COALESCE(MD5(STRING_AGG(
+              t.id || ':' || t.status || ':' || COALESCE(t.assigned_to::text, '') || ':' ||
+              t.void_status || ':' || t.reopen_status || ':' || t.is_province::text || ':' ||
+              COALESCE(EXTRACT(EPOCH FROM t.updated_at)::text, '') || ':' ||
+              COALESCE(EXTRACT(EPOCH FROM t.status_updated_at)::text, ''),
+              ',' ORDER BY t.id)), '') AS h
+     FROM tickets t
+     WHERE TRUE${scope ? scope.clause("t.branch") : ""}`,
+    scope ? [...scope.params] : []
+  );
+  return `${rows[0].n}-${rows[0].h}`;
+}
+
 /** Stamp a ticket as just having been auto-escalated (see
  * getTicketsNeedingEscalationPush), so it isn't picked up again until
  * another full STALE_OPEN_MINUTES has passed. */
@@ -3349,6 +3373,7 @@ module.exports = {
   isWithinReopenWindow,
   REOPEN_WINDOW_HOURS,
   getTicketsNeedingEscalationPush,
+  getTicketSyncFingerprint,
   markEscalated,
   markTicketsNotifSeen,
   getBranchTicketUpdatesCount,

@@ -758,6 +758,97 @@ async function getCorporationReport(startDate, endDate, corporation = null, scop
   return { corporations, summary };
 }
 
+// ---------- Response records (Super Admin "Response Records" tab) ----------
+
+/** One row per ticket created in [startDate, endDate]: how long it took IT to
+ * first act on it (tickets.first_response_at - created_at, stamped by
+ * data.markFirstResponse), who did, and how long it took to resolve. Tickets
+ * nobody has touched yet come back with response_minutes = null and
+ * waiting_minutes = how long they've been sitting untouched. Optional filters:
+ * branch, staffId (the assignee OR the first responder). Void-approved
+ * tickets are left out. */
+async function getResponseRecords(startDate, endDate, { branch = null, staffId = null } = {}) {
+  const pool = getConnection();
+  let where = "t.created_at::date BETWEEN ? AND ? AND t.void_status <> 'Voided'";
+  const params = [startDate, endDate];
+  if (branch) { where += " AND t.branch = ?"; params.push(branch); }
+  if (staffId) {
+    where += " AND (t.assigned_to = ? OR t.first_response_by = ?)";
+    params.push(staffId, staffId);
+  }
+  const [rows] = await pool.query(
+    `SELECT t.id, t.title, t.branch, t.priority, t.status, t.is_province,
+            t.created_at, t.first_response_at, t.resolved_at,
+            t.assigned_to, a.full_name AS assignee_name,
+            t.first_response_by, r.full_name AS responder_name,
+            CASE WHEN t.first_response_at IS NOT NULL
+                 THEN EXTRACT(EPOCH FROM (t.first_response_at - t.created_at)) / 60 END AS response_minutes,
+            CASE WHEN t.first_response_at IS NULL
+                 THEN EXTRACT(EPOCH FROM (NOW() - t.created_at)) / 60 END AS waiting_minutes,
+            CASE WHEN t.resolved_at IS NOT NULL
+                 THEN EXTRACT(EPOCH FROM (t.resolved_at - t.created_at)) / 60 END AS resolution_minutes
+       FROM tickets t
+       LEFT JOIN users a ON a.id = t.assigned_to
+       LEFT JOIN users r ON r.id = t.first_response_by
+      WHERE ${where}
+      ORDER BY t.created_at DESC, t.id DESC`,
+    params
+  );
+  const num = (v) => (v === null || v === undefined ? null : Math.max(0, Number(v)));
+  const records = rows.map((t) => ({
+    id: t.id,
+    title: t.title,
+    branch: t.branch,
+    priority: t.priority,
+    status: t.status,
+    is_province: !!t.is_province,
+    created_at: t.created_at,
+    first_response_at: t.first_response_at,
+    resolved_at: t.resolved_at,
+    assignee_id: t.assigned_to,
+    assignee_name: t.assignee_name,
+    responder_id: t.first_response_by,
+    responder_name: t.responder_name,
+    response_minutes: num(t.response_minutes),
+    waiting_minutes: num(t.waiting_minutes),
+    resolution_minutes: num(t.resolution_minutes),
+  }));
+
+  // Summary + per-responder averages (computed here so the UI stays dumb).
+  const responded = records.filter((x) => x.response_minutes !== null);
+  const sorted = responded.map((x) => x.response_minutes).sort((p, q) => p - q);
+  const avg = sorted.length ? sorted.reduce((p, q) => p + q, 0) / sorted.length : null;
+  const median = sorted.length
+    ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2]
+        : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2)
+    : null;
+  const byStaff = new Map();
+  for (const x of responded) {
+    if (!x.responder_id) continue;
+    const s = byStaff.get(x.responder_id) || { user_id: x.responder_id, full_name: x.responder_name, count: 0, total: 0, fastest: Infinity, slowest: 0 };
+    s.count++; s.total += x.response_minutes;
+    s.fastest = Math.min(s.fastest, x.response_minutes);
+    s.slowest = Math.max(s.slowest, x.response_minutes);
+    byStaff.set(x.responder_id, s);
+  }
+  const staff = [...byStaff.values()]
+    .map((s) => ({ user_id: s.user_id, full_name: s.full_name, count: s.count, avg_minutes: s.total / s.count, fastest_minutes: s.fastest, slowest_minutes: s.slowest }))
+    .sort((p, q) => p.avg_minutes - q.avg_minutes);
+
+  return {
+    records,
+    staff,
+    summary: {
+      total: records.length,
+      responded: responded.length,
+      waiting: records.length - responded.length,
+      avg_response_minutes: avg,
+      median_response_minutes: median,
+      slowest_response_minutes: sorted.length ? sorted[sorted.length - 1] : null,
+    },
+  };
+}
+
 module.exports = {
   NO_CORPORATION,
   getCorporationReport,
@@ -765,6 +856,7 @@ module.exports = {
   yearBounds,
   resolveDateRange,
   getPerformanceReport,
+  getResponseRecords,
   getStaffPerformanceReport,
   getStaffReportScope,
   getScopedStaffReport,
