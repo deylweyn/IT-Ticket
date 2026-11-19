@@ -1125,6 +1125,18 @@ async function recordAssist(ticketId, assistedBy, note = null) {
   );
 }
 
+/** Stamp the ticket's first IT response (who + when). Only writes once:
+ * if first_response_at is already set it's left alone, so reopening a
+ * ticket never resets it. See reporting.getResponseRecords. */
+async function markFirstResponse(ticketId, userId) {
+  const pool = getConnection();
+  await pool.query(
+    "UPDATE tickets SET first_response_at = NOW(), first_response_by = ? " +
+    "WHERE id = ? AND first_response_at IS NULL",
+    [userId, ticketId]
+  );
+}
+
 /** Assist history for one ticket (who helped, standing in for whom, and
  * when), most recent last. */
 async function getTicketAssists(ticketId) {
@@ -3256,7 +3268,6 @@ module.exports = {
   setItSpecialties,
   getItDepartmentUsers,
   getSuperAdminUsers,
-  getItDepartmentUsers,
   markAbsent,
   markAbsentRange,
   unmarkAbsent,
@@ -3287,6 +3298,7 @@ module.exports = {
   getAttendanceLog,
   getTodayAttendance,
   recordAssist,
+  markFirstResponse,
   getTicketAssists,
   getTicketCollaboratorIds,
   setTicketCollaborators,

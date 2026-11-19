@@ -30,6 +30,23 @@ const reportExport = require("./report_export");
 const push = require("./push");
 const ExcelJS = require("exceljs");
 
+// Safe wrapper: stamps the ticket's first IT response, and never lets a
+// failure here block the status change that triggered it.
+async function markFirstResponseSafe(ticketId, userId) {
+  try {
+    if (typeof data.markFirstResponse === "function") {
+      return await data.markFirstResponse(ticketId, userId);
+    }
+    await db.getConnection().query(
+      "UPDATE tickets SET first_response_at = NOW(), first_response_by = ? " +
+      "WHERE id = ? AND first_response_at IS NULL",
+      [userId, ticketId]
+    );
+  } catch (err) {
+    console.error("markFirstResponse failed:", err);
+  }
+}
+
 const BASE_DIR = __dirname;
 const STATIC_DIR = path.join(BASE_DIR, "static");
 // Ticket attachments live in Vercel Blob now (see the /attachments routes
@@ -737,7 +754,7 @@ route("POST", "/api/tickets/:id/status", async (req, res, params, query, body) =
     }
   }
   await data.updateTicketStatus(ticketId, status);
-  await data.markFirstResponse(ticketId, user.id);
+  await markFirstResponseSafe(ticketId, user.id);
 
   // Let the branch that filed this ticket know its status changed - this is
   // the ONLY thing the branch gets pushed here, regardless of how many IT
